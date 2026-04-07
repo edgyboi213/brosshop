@@ -1,3 +1,4 @@
+
 export enum Category {
   Shoes = 'Обувь',
   Clothes = 'Одежда',
@@ -12,7 +13,7 @@ export interface Product {
   price: number;
   description: string;
   code?: string;
-  imageUrl?: string; 
+  productImage?: string; 
 }
 
 export interface User {

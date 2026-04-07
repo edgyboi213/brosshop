@@ -96,7 +96,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, product, o
     category: 'Обувь',
     price: 0,
     description: '',
-    imageUrl: ''
+    productImage: ''
   });
   const [loading, setLoading] = useState(false);
 
@@ -107,7 +107,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, product, o
         category: product.category,
         price: product.price,
         description: product.description,
-        imageUrl: product.imageUrl || ''
+        productImage: product.productImage || ''
       });
     } else {
       setFormData({
@@ -115,7 +115,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, product, o
         category: 'Обувь',
         price: 0,
         description: '',
-        imageUrl: ''
+        productImage: ''
       });
     }
   }, [product, isOpen]);
@@ -164,7 +164,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, product, o
           <div>
             <label className="block text-sm text-zinc-400 mb-1">Ссылка на изображение</label>
             <input className="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-white" 
-              value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} />
+              value={formData.productImage} onChange={e => setFormData({...formData, productImage: e.target.value})} />
           </div>
           <div>
             <label className="block text-sm text-zinc-400 mb-1">Описание</label>
@@ -362,6 +362,7 @@ const ProductPage: React.FC = () => {
       Title: newReview.title.trim(),
       Text: newReview.text.trim(),
       ReviewDate: new Date().toISOString()
+      // Removed IdUserNavigation and IdProductNavigation as requested
     };
 
     try {
@@ -390,7 +391,7 @@ const ProductPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         <div className="bg-zinc-800 rounded-lg overflow-hidden h-fit">
            <img 
-            src={product.imageUrl || PLACEHOLDER_IMAGE} 
+            src={product.productImage || PLACEHOLDER_IMAGE} 
             alt={product.name}
             className="w-full h-auto object-cover"
           />
@@ -566,7 +567,7 @@ const CartPage: React.FC = () => {
              <div className="space-y-4">
               {cart.map((item, idx) => (
                 <div key={`${item.idProduct}-${item.selectedSize}`} className="flex gap-4 bg-zinc-900/50 p-4 rounded items-center border border-zinc-800">
-                  <img src={item.imageUrl || PLACEHOLDER_IMAGE} className="w-20 h-20 object-cover rounded" alt={item.name} />
+                  <img src={item.productImage || PLACEHOLDER_IMAGE} className="w-20 h-20 object-cover rounded" alt={item.name} />
                   <div className="flex-1">
                     <h3 className="font-bold text-lg">{item.name}</h3>
                     <p className="text-zinc-400 text-sm">Размер: {item.selectedSize}</p>
@@ -664,8 +665,6 @@ const AdminDashboard: React.FC = () => {
   const [isProductModalOpen, setProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  if (!user || user.idRole !== 1) return <Navigate to="/" />; 
-
   const fetchData = async () => {
     try {
       if (activeTab === 'products') {
@@ -683,7 +682,13 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchData(); }, [activeTab]);
+  useEffect(() => { 
+    if (user && user.idRole === 3) {
+      fetchData(); 
+    }
+  }, [activeTab, user, token]);
+
+  if (!user || user.idRole !== 3) return <Navigate to="/" />; 
 
   const handleDeleteProduct = async (id: number) => {
     if (window.confirm('Удалить товар?')) {
@@ -705,13 +710,21 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleSaveProduct = async (data: any) => {
+    const payload = {
+      IdProduct: editingProduct ? editingProduct.idProduct : 0,
+      Name: data.name,
+      Category: data.category,
+      Price: data.price,
+      Description: data.description,
+      ProductImage: data.productImage
+    };
     try {
       if (editingProduct) {
         // Update
-        await ProductsApi.update(editingProduct.idProduct, { ...editingProduct, ...data }, token || '');
+        await ProductsApi.update(editingProduct.idProduct, payload as any, token || '');
       } else {
         // Create
-        await ProductsApi.create(data, token || '');
+        await ProductsApi.create(payload as any, token || '');
       }
       fetchData(); // Refresh list
     } catch (e) {
@@ -776,7 +789,7 @@ const AdminDashboard: React.FC = () => {
                   <tr key={p.idProduct} className="border-b border-zinc-700/50 hover:bg-zinc-700/20">
                     <td className="p-2">{p.idProduct}</td>
                     <td className="p-2">
-                      <img src={p.imageUrl || PLACEHOLDER_IMAGE} alt="" className="w-10 h-10 object-cover rounded" />
+                      <img src={p.productImage || PLACEHOLDER_IMAGE} alt="" className="w-10 h-10 object-cover rounded" />
                     </td>
                     <td className="p-2 font-bold">{p.name}</td>
                     <td className="p-2 text-sm text-zinc-400">{p.category}</td>
@@ -866,7 +879,7 @@ const AdminLogin: React.FC = () => {
 
   useEffect(() => {
     // If already logged in as admin, redirect to dashboard
-    if (user && user.idRole === 1) {
+    if (user && user.idRole === 3) {
         navigate('/admin/dashboard');
     }
   }, [user, navigate]);
@@ -1002,7 +1015,7 @@ const Layout: React.FC = () => {
               )}
             </Link>
 
-            {user && user.idRole !== 1 ? (
+            {user && user.idRole !== 3 ? (
                <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setProfileModalOpen(true)}>
                  <div className="text-right hidden lg:block">
                     <div className="text-xs text-zinc-500">Привет,</div>
@@ -1051,7 +1064,7 @@ const Layout: React.FC = () => {
             ))}
           </div>
           <div className="border-t border-zinc-800 pt-4">
-          {user && user.idRole !== 1 ? (
+          {user && user.idRole !== 3 ? (
              <>
                <button onClick={() => { setProfileModalOpen(true); setMenuOpen(false); }} className="flex items-center gap-2 text-white w-full text-left mb-3">
                  <UserIcon className="w-5 h-5 text-orange-500" /> Профиль ({user.username})
@@ -1117,7 +1130,7 @@ const App: React.FC = () => {
          login: adminData.username,
          username: adminData.username,
          fullName: 'Administrator',
-         idRole: 1
+         idRole: 3
        };
        setUser(u);
        localStorage.setItem('user', JSON.stringify(u));
@@ -1129,7 +1142,7 @@ const App: React.FC = () => {
          login: userData.login, 
          username: userData.login, 
          fullName: '', 
-         idRole: 3,
+         idRole: 4,
          phoneNumber: '' 
        };
        setUser(basicUser);
